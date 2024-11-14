@@ -22,7 +22,7 @@ stage="${top}"/stage
 build="${top}"/build
 
 rm -rf "$stage"/*
-rm -rf "$build"/_package
+#rm -rf "$build"/_package
 case "$AUTOBUILD_PLATFORM" in
     windows64)
         autobuild="$(cygpath -u "$AUTOBUILD")"
@@ -32,11 +32,7 @@ case "$AUTOBUILD_PLATFORM" in
         autobuild="$(cygpath -u "$AUTOBUILD")"
         build_type="windows_x86_64"
     ;;
-    darwin64)
-        build_type="macos_x86_64"
-        autobuild="$AUTOBUILD"
-    ;;
-    darwin)
+    darwin*)
         build_type="macos_x86_64"
         autobuild="$AUTOBUILD"
     ;;
@@ -51,29 +47,74 @@ case "$AUTOBUILD_PLATFORM" in
 esac
 
 pushd "$build"
-bash ./build."$build_type".sh m114_release
 
-source_environment_tempfile="$stage/source_environment.sh"
-autobuild source_environment > "$source_environment_tempfile"
-. "$source_environment_tempfile"
+# Special case for macos universal packages
+case "$AUTOBUILD_PLATFORM" in
+    darwin*)
+        #bash ./build.macos_x86_64.sh m114_release
+        #bash ./build.macos_arm64.sh m114_release
 
-pushd "$stage"
+        source_environment_tempfile="$stage/source_environment.sh"
+        autobuild source_environment > "$source_environment_tempfile"
+        . "$source_environment_tempfile"
 
-tar -xjf "$build"/_package/"$build_type"/webrtc.tar.bz2 --strip-components=1
+        pushd "$stage"
 
-# Munge the WebRTC Build package contents into something compatible
-# with the layout we use for other autobuild pacakges
-mv include webrtc
-mkdir include
-mv webrtc include
-mv lib release
-mkdir lib
-mv release lib
-mkdir LICENSES
-mv NOTICE LICENSES/webrtc-license.txt
+        mkdir "x86_64"
+        pushd "x86_64"
+            tar -xjf "$build"/_package/macos_x86_64/webrtc.tar.bz2 --strip-components=1
+        popd
 
-build=${AUTOBUILD_BUILD_ID:=0}
-echo "m114_release.${build}" > "$stage/VERSION.txt"
-echo "m114_release.${build}" > "$top/VERSION.txt"
-popd
+        mkdir "arm64"
+        pushd "arm64"
+            tar -xjf "$build"/_package/macos_arm64/webrtc.tar.bz2 --strip-components=1
+        popd
+
+        # Munge the WebRTC Build package contents into something compatible
+        # with the layout we use for other autobuild pacakges
+
+        # Create universal library
+        mkdir -p lib/release
+        lipo -create -output "$stage/lib/release/libwebrtc.a" "$stage/x86_64/lib/libwebrtc.a" "$stage/arm64/lib/libwebrtc.a"
+
+        mkdir -p include
+        mv x86_64/include/* include
+
+        mkdir LICENSES
+        mv x86_64/NOTICE LICENSES/webrtc-license.txt
+
+        build=${AUTOBUILD_BUILD_ID:=0}
+        echo "m114_release.${build}" > "$stage/VERSION.txt"
+        echo "m114_release.${build}" > "$top/VERSION.txt"
+        popd
+    ;;
+    *)
+        bash ./build."$build_type".sh m114_release
+
+        source_environment_tempfile="$stage/source_environment.sh"
+        autobuild source_environment > "$source_environment_tempfile"
+        . "$source_environment_tempfile"
+
+        pushd "$stage"
+
+        tar -xjf "$build"/_package/"$build_type"/webrtc.tar.bz2 --strip-components=1
+
+        # Munge the WebRTC Build package contents into something compatible
+        # with the layout we use for other autobuild pacakges
+        mv include webrtc
+        mkdir include
+        mv webrtc include
+        mv lib release
+        mkdir lib
+        mv release lib
+        mkdir LICENSES
+        mv NOTICE LICENSES/webrtc-license.txt
+
+        build=${AUTOBUILD_BUILD_ID:=0}
+        echo "m114_release.${build}" > "$stage/VERSION.txt"
+        echo "m114_release.${build}" > "$top/VERSION.txt"
+        popd
+    ;;
+esac
+
 popd
