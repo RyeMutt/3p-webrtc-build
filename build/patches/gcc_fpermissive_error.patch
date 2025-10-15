@@ -1,0 +1,12 @@
+diff -durN webrtc-m137/p2p/base/port_interface.h webrtc-m137-patched/p2p/base/port_interface.h
+--- webrtc-m137/p2p/base/port_interface.h	2025-09-01 14:30:40.000000000 +0200
++++ webrtc-m137-patched/p2p/base/port_interface.h	2025-09-05 15:07:36.904283022 +0200
+@@ -55,7 +55,7 @@
+   virtual ~PortInterface();
+ 
+   virtual IceCandidateType Type() const = 0;
+-  virtual const Network* Network() const = 0;
++  virtual const webrtc::Network* Network() const = 0;
+ 
+   // Methods to set/get ICE role and tiebreaker values.
+   virtual void SetIceRole(IceRole role) = 0;

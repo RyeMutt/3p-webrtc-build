@@ -1,0 +1,15 @@
+diff --git a/BUILD.gn b/BUILD.gn
+index e4a82bc8d6..54fde4ce9a 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -384,6 +384,10 @@ config("common_config") {
+       # warning.
+       "-Wctad-maybe-unsupported",
+     ]
++  } else {
++    if(is_linux) {
++      cflags += [ "-fpermissive" ]
++    }
+   }
+ 
+   if (build_with_chromium) {
